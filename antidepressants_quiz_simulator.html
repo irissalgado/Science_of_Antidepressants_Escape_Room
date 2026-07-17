@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Science of Antidepressants — Interactive Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #12162a;
+    --panel: #1b2140;
+    --panel-raised: #232a4d;
+    --ink: #f1ede2;
+    --ink-dim: #a9aec8;
+    --spark: #e8a94c;
+    --spark-dim: #7a6437;
+    --dendrite: #5fbeb0;
+    --miss: #d97a7a;
+    --rule: rgba(241,237,226,0.12);
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: radial-gradient(ellipse at top, #1a2044 0%, #0e1226 65%);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height:100vh;
+    padding: 32px 16px 64px;
+  }
+  .wrap{max-width: 860px; margin: 0 auto;}
+  header{margin-bottom: 24px;}
+  .eyebrow{
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--dendrite); font-weight: 600; margin-bottom: 8px;
+  }
+  h1{
+    font-family: 'Source Serif 4', serif;
+    font-weight: 700;
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.1;
+    margin: 0 0 10px;
+  }
+  .sub{color: var(--ink-dim); font-size: 15px; max-width: 60ch; line-height: 1.5;}
+
+  .video-shell{
+    position: relative;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+    aspect-ratio: 16/9;
+    margin: 24px 0 28px;
+  }
+  #player{position:absolute; inset:0; width:100%; height:100%;}
+
+  /* Synapse tracker */
+  .tracker{
+    display:flex; align-items:flex-start; justify-content:space-between;
+    position: relative; padding: 0 4px; margin-bottom: 36px;
+  }
+  .tracker::before{
+    content:"";
+    position:absolute; top:11px; left: 24px; right:24px; height:2px;
+    background: var(--rule); z-index:0;
+  }
+  .node{
+    position:relative; z-index:1; display:flex; flex-direction:column; align-items:center;
+    gap:8px; flex:1; text-align:center;
+  }
+  .dot{
+    width:24px; height:24px; border-radius:50%;
+    background: var(--panel-raised);
+    border: 2px solid var(--rule);
+    transition: all 0.4s ease;
+  }
+  .dot.active{
+    border-color: var(--spark);
+    box-shadow: 0 0 0 6px rgba(232,169,76,0.15);
+  }
+  .dot.correct{ background: var(--spark); border-color: var(--spark); }
+  .dot.missed{ background: var(--miss); border-color: var(--miss); }
+  .node-label{font-size: 11px; color: var(--ink-dim); line-height:1.3; max-width: 90px;}
+  .node-time{font-size: 10px; color: var(--dendrite); font-weight:600; letter-spacing:0.04em;}
+
+  .status-card{
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    font-size: 14px;
+    color: var(--ink-dim);
+    display:flex; align-items:center; gap:12px;
+  }
+  .status-dotpulse{
+    width:8px; height:8px; border-radius:50%; background: var(--dendrite);
+    box-shadow: 0 0 0 0 rgba(95,190,176,0.6);
+    animation: pulse 2s infinite;
+    flex-shrink:0;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(95,190,176,0.5);}
+    70%{box-shadow:0 0 0 8px rgba(95,190,176,0);}
+    100%{box-shadow:0 0 0 0 rgba(95,190,176,0);}
+  }
+
+  /* Modal */
+  .overlay{
+    position: fixed; inset:0; background: rgba(8,10,22,0.72);
+    backdrop-filter: blur(3px);
+    display:none; align-items:center; justify-content:center;
+    z-index: 50; padding: 20px;
+  }
+  .overlay.show{display:flex;}
+  .modal{
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    max-width: 560px; width:100%;
+    padding: 28px 28px 24px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .modal-eyebrow{
+    font-size:11px; letter-spacing:0.12em; text-transform:uppercase;
+    color: var(--spark); font-weight:700; margin-bottom:10px;
+  }
+  .modal h2{
+    font-family:'Source Serif 4', serif;
+    font-size: 20px; line-height:1.35; margin: 0 0 20px; font-weight:600;
+  }
+  .options{display:flex; flex-direction:column; gap:10px; margin-bottom: 18px;}
+  .option{
+    text-align:left;
+    background: var(--panel-raised);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 13px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor:pointer;
+    transition: border-color 0.15s, background 0.15s;
+    font-family: inherit;
+  }
+  .option:hover:not(:disabled){border-color: var(--dendrite);}
+  .option.selected{border-color: var(--dendrite); background: rgba(95,190,176,0.1);}
+  .option.correct{border-color: var(--spark); background: rgba(232,169,76,0.16);}
+  .option.incorrect{border-color: var(--miss); background: rgba(217,122,122,0.14);}
+  .option:disabled{cursor:default;}
+
+  .feedback{
+    font-size: 13.5px; line-height:1.55; color: var(--ink-dim);
+    padding: 14px 16px; border-radius: 10px; background: var(--panel-raised);
+    border-left: 3px solid var(--spark);
+    display:none; margin-bottom: 18px;
+  }
+  .feedback.show{display:block;}
+  .feedback strong{color: var(--ink);}
+
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px;}
+  button.primary{
+    background: var(--spark);
+    color: #14162a;
+    border: none;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 11px 22px;
+    border-radius: 999px;
+    cursor:pointer;
+    font-family: inherit;
+  }
+  button.primary:disabled{opacity:0.35; cursor:not-allowed;}
+  button.primary:hover:not(:disabled){filter:brightness(1.08);}
+
+  .summary{
+    display:none;
+    text-align:center;
+  }
+  .summary.show{display:block;}
+  .summary-score{
+    font-family:'Source Serif 4', serif;
+    font-size: 42px; font-weight:700; color: var(--spark);
+  }
+
+  footer{margin-top: 30px; font-size: 12px; color: var(--ink-dim); text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Interactive Video · Neuropsychopharmacology</div>
+    <h1>Science of Antidepressants</h1>
+    <p class="sub">Watch the video below. It will pause automatically at five points to check your understanding of the concept you just saw — chemical imbalance, BDNF, time course, and ketamine.</p>
+  </header>
+
+  <div class="video-shell">
+    <div id="player"></div>
+  </div>
+
+  <div class="tracker" id="tracker"></div>
+
+  <div class="status-card" id="statusCard">
+    <div class="status-dotpulse"></div>
+    <span id="statusText">Press play to begin. The video will pause on its own — no need to watch the clock.</span>
+  </div>
+
+  <footer>5 checkpoints · questions unlock only after the related material has played</footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-eyebrow" id="modalEyebrow">Checkpoint 1 of 5</div>
+    <h2 id="modalQuestion"></h2>
+    <div class="options" id="modalOptions"></div>
+    <div class="feedback" id="modalFeedback"></div>
+    <div class="modal-actions">
+      <button class="primary" id="modalBtn" disabled>Submit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  {
+    time: 94, label: "Major depressive disorder", short: "MDD",
+    q: "Which statement best describes major depressive disorder?",
+    options: [
+      "It is defined by temporary sadness lasting several hours",
+      "It involves persistent depressive symptoms that can significantly affect daily functioning",
+      "It is caused exclusively by low serotonin levels",
+      "It occurs only in response to an identifiable stressful event"
+    ],
+    correct: 1,
+    feedback: "Major depressive disorder involves persistent symptoms that affect mood and functioning. It cannot be reduced to ordinary temporary sadness or to a single neurotransmitter abnormality."
+  },
+  {
+    time: 167, label: "Chemical imbalance vs. neurotrophic hypothesis", short: "Chemical imbalance",
+    q: "Which statement best reflects the current understanding of the \u201cchemical imbalance\u201d explanation of depression?",
+    options: [
+      "Depression is fully explained by a deficiency of one neurotransmitter",
+      "The chemical imbalance theory completely explains why antidepressants take weeks to work",
+      "Depression is more complex than a simple imbalance of neurotransmitters",
+      "Neurotransmitters have no role in depression or its treatment"
+    ],
+    correct: 2,
+    feedback: "Neurotransmitter systems remain important, but depression is not adequately explained as a simple deficiency or imbalance of a single chemical."
+  },
+  {
+    time: 228, label: "BDNF and neuroplasticity", short: "BDNF",
+    q: "According to the neurotrophic hypothesis, depression may be associated with which change?",
+    options: [
+      "Increased neuronal growth in all brain regions",
+      "Reduced neuroplasticity and decreased neurotrophic support, including BDNF",
+      "Permanent elimination of serotonin from the brain",
+      "Excessive production of new neurons immediately after stress"
+    ],
+    correct: 1,
+    feedback: "The neurotrophic hypothesis proposes that depression is associated with impaired neuroplasticity and reduced neurotrophic support. BDNF is particularly important because it supports neuronal survival, growth, and synaptic plasticity."
+  },
+  {
+    time: 307, label: "Why antidepressants take time", short: "Time course",
+    q: "Why can the therapeutic effects of conventional antidepressants take weeks to become clinically apparent, even though neurotransmitter changes may occur relatively quickly?",
+    options: [
+      "The medications require several weeks to enter the brain",
+      "Clinical improvement depends on slower downstream adaptations, including changes in neuroplasticity and neural connections",
+      "Neurotransmitter levels do not change until several weeks after treatment begins",
+      "Antidepressants must completely replace damaged neurons before symptoms improve"
+    ],
+    correct: 1,
+    feedback: "The immediate pharmacologic action of an antidepressant does not fully explain the delayed clinical response. Therapeutic improvement is thought to involve downstream cellular and neural adaptations, including increased BDNF signaling, neuroplasticity, and remodeling of neural connections."
+  },
+  {
+    time: 368, label: "Standard antidepressants vs. ketamine", short: "Ketamine",
+    q: "Which feature distinguishes ketamine from many conventional antidepressants?",
+    options: [
+      "It generally produces a more rapid antidepressant effect",
+      "It acts only by blocking serotonin reuptake",
+      "It requires a longer time to produce improvement",
+      "It has no effect on neuroplasticity"
+    ],
+    correct: 0,
+    feedback: "Ketamine is notable for its potential to produce rapid antidepressant effects, contrasting with the slower onset typically associated with many conventional antidepressants."
+  }
+];
+
+let player;
+let currentIdx = -1;
+let answered = new Array(QUESTIONS.length).fill(null); // null | true | false
+let pollTimer = null;
+
+function buildTracker(){
+  const el = document.getElementById('tracker');
+  el.innerHTML = '';
+  QUESTIONS.forEach((qq, i) => {
+    const mins = Math.floor(qq.time/60), secs = String(qq.time%60).padStart(2,'0');
+    const node = document.createElement('div');
+    node.className = 'node';
+    node.innerHTML = `
+      <div class="dot" id="dot-${i}"></div>
+      <div class="node-time">${mins}:${secs}</div>
+      <div class="node-label">${qq.short}</div>
+    `;
+    el.appendChild(node);
+  });
+}
+buildTracker();
+
+function onYouTubeIframeAPIReady(){
+  player = new YT.Player('player', {
+    videoId: '-w2voGaE8KU',
+    playerVars: { rel: 0, modestbranding: 1 },
+    events: {
+      onStateChange: onStateChange
+    }
+  });
+}
+
+function onStateChange(e){
+  if(e.data === YT.PlayerState.PLAYING){
+    document.getElementById('statusText').textContent = 'Playing — five checkpoints ahead.';
+    startPolling();
+  } else {
+    stopPolling();
+  }
+}
+
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(() => {
+    if(!player || typeof player.getCurrentTime !== 'function') return;
+    const t = player.getCurrentTime();
+    for(let i=0;i<QUESTIONS.length;i++){
+      if(answered[i] === null && t >= QUESTIONS[i].time){
+        openQuestion(i);
+        break;
+      }
+    }
+  }, 300);
+}
+function stopPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+function openQuestion(i){
+  currentIdx = i;
+  player.pauseVideo();
+  stopPolling();
+  document.getElementById(`dot-${i}`).classList.add('active');
+  document.getElementById('statusText').textContent = `Checkpoint reached — answer to continue (${i+1} of ${QUESTIONS.length}).`;
+
+  const qq = QUESTIONS[i];
+  document.getElementById('modalEyebrow').textContent = `Checkpoint ${i+1} of ${QUESTIONS.length} · ${qq.label}`;
+  document.getElementById('modalQuestion').textContent = qq.q;
+
+  const optsEl = document.getElementById('modalOptions');
+  optsEl.innerHTML = '';
+  let selected = null;
+
+  qq.options.forEach((optText, oi) => {
+    const b = document.createElement('button');
+    b.className = 'option';
+    b.textContent = `${String.fromCharCode(65+oi)}. ${optText}`;
+    b.addEventListener('click', () => {
+      if(document.getElementById('modalFeedback').classList.contains('show')) return;
+      [...optsEl.children].forEach(c => c.classList.remove('selected'));
+      b.classList.add('selected');
+      selected = oi;
+      document.getElementById('modalBtn').disabled = false;
+    });
+    optsEl.appendChild(b);
+  });
+
+  const feedbackEl = document.getElementById('modalFeedback');
+  feedbackEl.classList.remove('show');
+  feedbackEl.innerHTML = '';
+
+  const btn = document.getElementById('modalBtn');
+  btn.textContent = 'Submit';
+  btn.disabled = true;
+  btn.onclick = () => {
+    if(feedbackEl.classList.contains('show')){
+      closeQuestion(i);
+      return;
+    }
+    if(selected === null) return;
+    const isCorrect = selected === qq.correct;
+    answered[i] = isCorrect;
+    [...optsEl.children].forEach((c, oi) => {
+      c.disabled = true;
+      if(oi === qq.correct) c.classList.add('correct');
+      else if(oi === selected && !isCorrect) c.classList.add('incorrect');
+    });
+    feedbackEl.innerHTML = `<strong>${isCorrect ? 'Correct.' : 'Not quite.'}</strong> ${qq.feedback}`;
+    feedbackEl.classList.add('show');
+    btn.textContent = (i === QUESTIONS.length-1) ? 'Finish' : 'Continue video';
+
+    const dot = document.getElementById(`dot-${i}`);
+    dot.classList.remove('active');
+    dot.classList.add(isCorrect ? 'correct' : 'missed');
+  };
+
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeQuestion(i){
+  document.getElementById('overlay').classList.remove('show');
+  if(i === QUESTIONS.length - 1){
+    showSummary();
+  } else {
+    player.playVideo();
+  }
+}
+
+function showSummary(){
+  const correctCount = answered.filter(a => a === true).length;
+  document.getElementById('statusText').innerHTML =
+    `<span style="color:var(--spark); font-weight:700;">Complete.</span> You answered ${correctCount} of ${QUESTIONS.length} checkpoints correctly.`;
+}
+
+// Load YouTube IFrame API
+const tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+document.head.appendChild(tag);
+</script>
+</body>
+</html>
