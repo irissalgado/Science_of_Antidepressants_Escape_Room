@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Central Hospital — Code Blue Systems Recovery</title>
+<style>
+  :root{
+    --bg:#040a08;
+    --panel:#0a1512;
+    --panel-2:#0d1c17;
+    --line:#173229;
+    --green:#3ddc84;
+    --green-dim:#1d5e40;
+    --amber:#f2b344;
+    --red:#ff5c5c;
+    --text:#d9ece3;
+    --text-dim:#7fa392;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 550px at 15% -10%, #0c2119 0%, transparent 60%),
+      radial-gradient(900px 500px at 95% 110%, #0a1a14 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Courier New', 'SFMono-Regular', Consolas, monospace;
+    min-height:100vh;
+    padding:32px 16px;
+    display:flex;
+    justify-content:center;
+  }
+  .wrap{width:100%;max-width:760px;}
+  .hud-top{
+    display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:6px;
+    letter-spacing:1px;
+  }
+  .ward-name{font-size:13px;color:var(--green);text-transform:uppercase;}
+  .status{font-size:11px;color:var(--text-dim);}
+  .status.alert{color:var(--red);}
+
+  .ecg{width:100%;height:34px;margin-bottom:18px;display:block;}
+  .ecg path{fill:none;stroke:var(--green);stroke-width:1.5;opacity:.55;}
+
+  h1{
+    font-size:22px;font-weight:400;color:var(--text);margin:0 0 6px;
+    letter-spacing:.5px;
+  }
+  .sub{font-size:13px;color:var(--text-dim);margin:0 0 26px;line-height:1.6;}
+  .sub .accent{color:var(--green);}
+
+  .systems{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:26px;
+  }
+  .sys{
+    border:1px solid var(--line);background:var(--panel);
+    padding:9px 6px;text-align:center;border-radius:3px;
+  }
+  .sys .label{font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+  .sys .dot{width:8px;height:8px;border-radius:50%;background:#26382f;margin:0 auto;}
+  .sys.online{border-color:var(--green-dim);}
+  .sys.online .dot{background:var(--green);box-shadow:0 0 8px var(--green);}
+  .sys.online .label{color:var(--green);}
+
+  .terminal{
+    border:1px solid var(--line);background:var(--panel);
+    border-radius:4px;padding:22px 22px 20px;position:relative;
+  }
+  .qcount{font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:10px;}
+  .qtext{font-size:15.5px;line-height:1.65;color:var(--text);margin:0 0 20px;}
+  .options{display:flex;flex-direction:column;gap:9px;}
+  .opt{
+    text-align:left;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);padding:12px 14px;font-family:inherit;font-size:13px;
+    border-radius:3px;cursor:pointer;transition:border-color .15s;
+    display:flex;gap:10px;line-height:1.5;
+  }
+  .opt:hover{border-color:var(--green-dim);}
+  .opt .k{color:var(--text-dim);flex-shrink:0;}
+  .opt.correct{border-color:var(--green);background:#0d241c;color:var(--green);}
+  .opt.wrong{border-color:var(--red);background:#2a1010;color:#ffb0b0;}
+  .opt:disabled{cursor:default;}
+
+  .feedback{
+    margin-top:16px;font-size:12.5px;line-height:1.6;min-height:18px;
+    color:var(--text-dim);
+  }
+  .feedback.ok{color:var(--green);}
+  .feedback.no{color:var(--red);}
+
+  .footer-row{
+    display:flex;justify-content:space-between;align-items:center;margin-top:18px;
+  }
+  .hint{font-size:11px;color:var(--text-dim);}
+  .next{
+    background:transparent;border:1px solid var(--green-dim);color:var(--green);
+    font-family:inherit;font-size:12px;padding:8px 16px;border-radius:3px;
+    cursor:pointer;letter-spacing:.5px;visibility:hidden;
+  }
+  .next.show{visibility:visible;}
+  .next:hover{background:#0d241c;}
+
+  .escape{text-align:center;padding:30px 10px 10px;}
+  .escape .big{font-size:20px;color:var(--green);margin-bottom:10px;letter-spacing:1px;}
+  .escape .line{font-size:12.5px;color:var(--text-dim);line-height:1.8;}
+  .escape .score{font-size:13px;color:var(--amber);margin-top:14px;}
+  .restart{
+    margin-top:20px;background:transparent;border:1px solid var(--line);
+    color:var(--text-dim);font-family:inherit;font-size:11px;padding:8px 16px;
+    border-radius:3px;cursor:pointer;
+  }
+  .restart:hover{border-color:var(--green-dim);color:var(--green);}
+
+  .submit-block{
+    margin-top:22px;padding-top:20px;border-top:1px solid var(--line);
+    text-align:left;
+  }
+  .submit-block .lead{font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+  .submit-row{display:flex;gap:8px;}
+  .submit-row input{
+    flex:1;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);font-family:inherit;font-size:13px;padding:9px 12px;
+    border-radius:3px;
+  }
+  .submit-row input:focus{outline:none;border-color:var(--green-dim);}
+  .submit-row button{
+    background:transparent;border:1px solid var(--green-dim);color:var(--green);
+    font-family:inherit;font-size:12px;padding:0 16px;border-radius:3px;cursor:pointer;
+  }
+  .submit-row button:hover{background:#0d241c;}
+  .submit-row button:disabled{opacity:.5;cursor:default;}
+  .submit-msg{font-size:11.5px;margin-top:8px;min-height:14px;color:var(--text-dim);}
+  .submit-msg.ok{color:var(--green);}
+  .submit-msg.no{color:var(--red);}
+
+  .board{margin-top:18px;}
+  .board .lead{font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+  .board .refresh{
+    background:transparent;border:none;color:var(--text-dim);cursor:pointer;
+    font-family:inherit;font-size:11px;text-decoration:underline;padding:0;
+  }
+  .board .refresh:hover{color:var(--green);}
+  .board table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .board th{
+    text-align:left;color:var(--text-dim);font-weight:400;font-size:10.5px;
+    letter-spacing:.5px;text-transform:uppercase;padding:6px 8px;
+    border-bottom:1px solid var(--line);
+  }
+  .board td{padding:7px 8px;border-bottom:1px solid var(--line);}
+  .board tr:last-child td{border-bottom:none;}
+  .board .rank{color:var(--text-dim);width:28px;}
+  .board .pct{color:var(--amber);text-align:right;}
+  .board .empty{color:var(--text-dim);font-size:12px;padding:10px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hud-top">
+    <span class="ward-name">Central Hospital — ward 4 recovery console</span>
+    <span class="status alert" id="statusTxt">code blue: 0 systems online</span>
+  </div>
+
+  <svg class="ecg" viewBox="0 0 700 34" preserveAspectRatio="none">
+    <path d="M0,17 L60,17 L75,17 L82,4 L90,30 L98,17 L120,17 L180,17 L195,17 L202,4 L210,30 L218,17 L240,17 L300,17 L315,17 L322,4 L330,30 L338,17 L360,17 L420,17 L435,17 L442,4 L450,30 L458,17 L480,17 L540,17 L555,17 L562,4 L570,30 L578,17 L600,17 L660,17 L675,17 L682,4 L690,30 L698,17 L700,17"/>
+  </svg>
+
+  <h1>Code blue: systems recovery</h1>
+  <p class="sub">A ward-wide outage has taken eight hospital systems offline. Each one restarts only when you correctly reason through a harder scenario about the <span class="accent">NBME assessment ecosystem</span> — timelines, account syncing, and the data lifecycle. Clear all eight before the ward flatlines.</p>
+
+  <div class="systems" id="systems"></div>
+
+  <div class="terminal">
+    <div class="qcount" id="qcount">case 1 / 8</div>
+    <div id="quizArea">
+      <p class="qtext" id="qtext"></p>
+      <div class="options" id="options"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="footer-row">
+        <span class="hint" id="hint"></span>
+        <button class="next" id="nextBtn">proceed →</button>
+      </div>
+    </div>
+    <div id="escapeArea" style="display:none;"></div>
+  </div>
+
+</div>
+
+<script>
+const questions = [
+  {
+    label: "triage protocol",
+    q: "A resident's Subject Exam score is missing from INSIGHTS. It's been 5 days since her testing window closed, and separately, her MyNBME email doesn't match her school's roster email. Per the recommended troubleshooting flow, what should she check first?",
+    options: [
+      "Contact her school's administration immediately",
+      "Check the timeline — has enough time passed since the window closed",
+      "Assume the data is permanently lost",
+      "Wait for a financial aid decision before investigating"
+    ],
+    correct: 1,
+    explain: "The troubleshooting flow starts with checking the timeline, then account alignment, then the maintenance window, and only then contacting administration."
+  },
+  {
+    label: "3-day timing",
+    q: "A school receives a student's results on a Monday. Under the 3-Day Rule, and given the deck's stated earliest possible timing, what is the earliest day post-test the student could see the score?",
+    options: [
+      "3 days post-test",
+      "4 days post-test",
+      "6 days post-test",
+      "10 days post-test"
+    ],
+    correct: 1,
+    explain: "The 3-Day Rule makes results visible 3 days after school receipt, but the deck specifies the earliest possible visibility is 4 days after the test itself."
+  },
+  {
+    label: "6-day timing",
+    q: "Under the 6-Day Rule, absent an early manual release by the school, what is the earliest day post-test a student could see their score?",
+    options: [
+      "6 days post-test",
+      "3 days post-test",
+      "7 days post-test",
+      "14 days post-test"
+    ],
+    correct: 2,
+    explain: "The 6-Day Rule makes results visible 6 days after school receipt, with an earliest possible visibility of 7 days post-test — schools can also opt to release sooner."
+  },
+  {
+    label: "data lifecycle",
+    q: "Put the data lifecycle in the correct order, from test day to dashboard.",
+    options: [
+      "Test window ends → sent to MyNBME Services Portal (1-3 business days) → notification received → data live in INSIGHTS",
+      "Notification received → test window ends → data live in INSIGHTS → sent to MyNBME Services Portal",
+      "Data live in INSIGHTS → test window ends → notification received → sent to MyNBME Services Portal",
+      "Sent to MyNBME Services Portal → data live in INSIGHTS → test window ends → notification received"
+    ],
+    correct: 0,
+    explain: "Test window ends, results are sent to the MyNBME Services Portal (taking 1-3 business days), a notification is received, and then data goes live in INSIGHTS."
+  },
+  {
+    label: "records sync",
+    q: "A student took Self-Assessments through her MyNBME portal but her Subject Exam data never merges with it in INSIGHTS. Which two data sources need matching email addresses for this to work?",
+    options: [
+      "Her personal email and her work email",
+      "Her MyNBME portal account and her school's roster (medical examinee) record",
+      "Her USMLE account and her NBME.org account",
+      "Her Step 1 and Step 2 CK registration forms"
+    ],
+    correct: 1,
+    explain: "The MyNBME portal (used to purchase and take Self-Assessments) must have an email that exactly matches the school roster email used to register her for Subject and CAS exams."
+  },
+  {
+    label: "exam classification",
+    q: "Subject Exams and USMLE exams are formally described as tracking clinical science mastery and national standards. Which of the ecosystem's three pillars do they belong to?",
+    options: [
+      "Equity & Access",
+      "Preparation",
+      "Milestone Exams",
+      "None — they sit outside the three pillars"
+    ],
+    correct: 2,
+    explain: "Milestone Exams — Subject Exams and USMLE formally track clinical science mastery and national standards, distinct from the Preparation pillar's Self-Assessments."
+  },
+  {
+    label: "patient funding",
+    q: "Which statement correctly distinguishes the two funding resources described in the deck?",
+    options: [
+      "They're the same program marketed under two names",
+      "NBME Fee Assistance for USMLE targets students with financial need managing licensure costs; the NBME/NMF Scholarship is a partnership with National Medical Fellowships promoting health equity",
+      "The NMF Scholarship only covers Step 3 registration",
+      "NBME Fee Assistance requires a co-payment from the student's school"
+    ],
+    correct: 1,
+    explain: "Fee Assistance for USMLE supports licensure costs for students with financial need, while the NBME/NMF Scholarship partnership promotes health equity and offsets educational barriers."
+  },
+  {
+    label: "referral desk",
+    q: "Per the deck, where should a student go to review full eligibility criteria and applications for these financial programs?",
+    options: [
+      "The INSIGHTS dashboard help chat",
+      "NBME.org/examinees",
+      "Their school's financial aid office website",
+      "The MyNBME billing settings page"
+    ],
+    correct: 1,
+    explain: "The deck points students to NBME.org/examinees for full eligibility criteria and applications."
+  }
+];
+
+let current = 0;
+let solved = 0;
+let answeredThisQ = false;
+
+const systemsEl = document.getElementById('systems');
+const qcountEl = document.getElementById('qcount');
+const qtextEl = document.getElementById('qtext');
+const optionsEl = document.getElementById('options');
+const feedbackEl = document.getElementById('feedback');
+const hintEl = document.getElementById('hint');
+const nextBtn = document.getElementById('nextBtn');
+const statusTxt = document.getElementById('statusTxt');
+const quizArea = document.getElementById('quizArea');
+const escapeArea = document.getElementById('escapeArea');
+
+function renderSystems(){
+  systemsEl.innerHTML = questions.map((q,i)=>{
+    const online = i < solved;
+    return '<div class="sys '+(online?'online':'')+'"><div class="dot"></div><div class="label">'+q.label+'</div></div>';
+  }).join('');
+}
+
+function renderQuestion(){
+  answeredThisQ = false;
+  const q = questions[current];
+  qcountEl.textContent = 'case ' + (current+1) + ' / ' + questions.length;
+  qtextEl.textContent = q.q;
+  feedbackEl.textContent = '';
+  feedbackEl.className = 'feedback';
+  hintEl.textContent = '';
+  nextBtn.classList.remove('show');
+  const letters = ['A','B','C','D'];
+  optionsEl.innerHTML = '';
+  q.options.forEach((opt,i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.innerHTML = '<span class="k">'+letters[i]+'</span><span>'+opt+'</span>';
+    btn.addEventListener('click', ()=>handleAnswer(i, btn));
+    optionsEl.appendChild(btn);
+  });
+}
+
+function handleAnswer(i, btn){
+  if(answeredThisQ) return;
+  answeredThisQ = true;
+  const q = questions[current];
+  const allBtns = optionsEl.querySelectorAll('.opt');
+  allBtns.forEach(b=>b.disabled = true);
+  if(i === q.correct){
+    btn.classList.add('correct');
+    solved++;
+    renderSystems();
+    feedbackEl.textContent = 'system restored — ' + q.explain;
+    feedbackEl.className = 'feedback ok';
+    statusTxt.textContent = solved === questions.length ? 'all systems restored' : solved + ' of ' + questions.length + ' systems online';
+    statusTxt.className = solved === questions.length ? 'status' : 'status alert';
+  } else {
+    btn.classList.add('wrong');
+    allBtns[q.correct].classList.add('correct');
+    feedbackEl.textContent = 'incorrect — ' + q.explain;
+    feedbackEl.className = 'feedback no';
+  }
+  nextBtn.classList.add('show');
+  nextBtn.textContent = (current === questions.length - 1) ? 'stabilize the ward →' : 'proceed →';
+}
+
+nextBtn.addEventListener('click', ()=>{
+  if(current === questions.length - 1){
+    showEscape();
+    return;
+  }
+  current++;
+  renderQuestion();
+});
+
+function showEscape(){
+  quizArea.style.display = 'none';
+  qcountEl.style.display = 'none';
+  escapeArea.style.display = 'block';
+  const pct = Math.round((solved/questions.length)*100);
+  const success = solved === questions.length;
+  escapeArea.innerHTML =
+    '<div class="escape">' +
+      '<div class="big">'+(success ? 'ward stabilized' : 'ward still critical')+'</div>' +
+      '<div class="line">'+solved+' of '+questions.length+' systems restored ('+pct+'%).</div>' +
+      '<div class="line">'+(success ? 'Every monitor reads green. Records, funding, and timing systems are all back online.' : 'Some systems are still dark. Review the flagged cases and run the recovery sequence again.')+'</div>' +
+      '<div class="score">final systems check: '+pct+'%</div>' +
+      '<div class="submit-block">' +
+        '<div class="lead">log your result on the ward board</div>' +
+        '<div class="submit-row">' +
+          '<input type="text" id="nameInput" placeholder="your name" maxlength="40">' +
+          '<button id="submitBtn">submit</button>' +
+        '</div>' +
+        '<div class="submit-msg" id="submitMsg"></div>' +
+      '</div>' +
+      '<div class="board">' +
+        '<div class="lead"><span>ward board</span><button class="refresh" id="refreshBtn">refresh</button></div>' +
+        '<div id="boardArea"><div class="empty">loading board…</div></div>' +
+      '</div>' +
+      '<button class="restart" id="restartBtn">restart sequence</button>' +
+    '</div>';
+
+  document.getElementById('restartBtn').addEventListener('click', restart);
+  document.getElementById('submitBtn').addEventListener('click', ()=>submitScore(solved, pct));
+  document.getElementById('refreshBtn').addEventListener('click', loadLeaderboard);
+  document.getElementById('nameInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') submitScore(solved, pct);
+  });
+
+  loadLeaderboard();
+}
+
+function keyForName(name){
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return 'entry:' + (slug || 'anon');
+}
+
+async function submitScore(solvedCount, pct){
+  const input = document.getElementById('nameInput');
+  const msg = document.getElementById('submitMsg');
+  const btn = document.getElementById('submitBtn');
+  const name = input.value.trim();
+  if(!name){
+    msg.textContent = 'enter your name first';
+    msg.className = 'submit-msg no';
+    return;
+  }
+  btn.disabled = true;
+  msg.textContent = 'saving…';
+  msg.className = 'submit-msg';
+  try{
+    const record = { name: name.slice(0,40), solved: solvedCount, total: questions.length, pct: pct, ts: Date.now() };
+    const result = await window.storage.set(keyForName(name), JSON.stringify(record), true);
+    if(!result){
+      msg.textContent = 'could not save — try again';
+      msg.className = 'submit-msg no';
+    } else {
+      msg.textContent = 'saved to the ward board';
+      msg.className = 'submit-msg ok';
+      loadLeaderboard();
+    }
+  } catch(err){
+    msg.textContent = 'could not save — try again';
+    msg.className = 'submit-msg no';
+  }
+  btn.disabled = false;
+}
+
+async function loadLeaderboard(){
+  const boardArea = document.getElementById('boardArea');
+  if(!boardArea) return;
+  boardArea.innerHTML = '<div class="empty">loading board…</div>';
+  try{
+    const listResult = await window.storage.list('entry:', true);
+    const keys = (listResult && listResult.keys) || [];
+    if(keys.length === 0){
+      boardArea.innerHTML = '<div class="empty">no entries yet — be the first.</div>';
+      return;
+    }
+    const records = [];
+    for(const k of keys){
+      try{
+        const r = await window.storage.get(k, true);
+        if(r && r.value){
+          records.push(JSON.parse(r.value));
+        }
+      } catch(e){}
+    }
+    records.sort((a,b)=> b.pct - a.pct || a.ts - b.ts);
+    const rows = records.map((r,i)=>{
+      const safeName = String(r.name || 'anon').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return '<tr><td class="rank">'+(i+1)+'</td><td>'+safeName+'</td><td class="pct">'+r.pct+'%</td></tr>';
+    }).join('');
+    boardArea.innerHTML =
+      '<table><thead><tr><th></th><th>name</th><th style="text-align:right;">score</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  } catch(err){
+    boardArea.innerHTML = '<div class="empty">could not load the board — try refresh.</div>';
+  }
+}
+
+function restart(){
+  current = 0; solved = 0;
+  quizArea.style.display = 'block';
+  qcountEl.style.display = 'block';
+  escapeArea.style.display = 'none';
+  statusTxt.textContent = 'code blue: 0 systems online';
+  statusTxt.className = 'status alert';
+  renderSystems();
+  renderQuestion();
+}
+
+renderSystems();
+renderQuestion();
+</script>
+</body>
+</html>
